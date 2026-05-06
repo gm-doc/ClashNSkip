@@ -121,7 +121,7 @@
     <canvas id="gameCanvas" width="960" height="540"></canvas>
     <button id="skip-idle">&#x23ED; Skip Ad</button>
     <div id="volume-control">
-      <span id="volume-label" style="font-size:14px;line-height:1;">??</span>
+      <span id="volume-label" style="font-size:14px;line-height:1;">&#128266;</span>
       <input id="volume-slider" type="range" min="0" max="100" step="1" value="30">
     </div>
   </div>
@@ -158,12 +158,16 @@
       // Hide skip overlay
       if (typeof skipOverlay !== 'undefined') skipOverlay.style.display = 'none';
 
+      // Restore system cursor while popup is open so interaction is not confusing.
+      const prevBodyCursor = document.body.style.cursor;
+      document.body.style.cursor = 'default';
+
       const score = Math.max(0, Math.floor(cash));
       const overlay = document.createElement('div');
       overlay.id = 'gameover-overlay';
-      overlay.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;background:rgba(3,7,14,0.88);font-family:sans-serif;';
+      overlay.style.cssText = 'position:absolute;inset:0;display:block;z-index:100;background:rgba(3,7,14,0.88);font-family:sans-serif;cursor:default;';
       overlay.innerHTML = `
-        <div style="background:linear-gradient(180deg,rgba(32,37,44,0.97) 0%,rgba(14,17,22,0.98) 100%);border:2px solid #e53e3e;border-radius:14px;padding:28px 48px;text-align:center;color:#e7f2ff;box-shadow:0 0 60px rgba(229,62,62,0.45);">
+        <div id="gameover-card" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,rgba(32,37,44,0.97) 0%,rgba(14,17,22,0.98) 100%);border:2px solid #e53e3e;border-radius:14px;padding:28px 48px;text-align:center;color:#e7f2ff;box-shadow:0 0 60px rgba(229,62,62,0.45);">
           <img src="assets/player/ship/logo.png${_logoCacheBust}" id="gameover-logo-img" style="height:120px;width:auto;opacity:0.92;image-rendering:pixelated;margin-bottom:10px;" onerror="this.style.display='none'">
           <div style="font-size:38px;font-weight:900;letter-spacing:0.06em;color:#e53e3e;text-shadow:0 0 20px #e53e3e88;margin-bottom:10px;">GAME OVER</div>
           <div style="font-size:16px;opacity:0.72;margin-bottom:8px;">The skip button was destroyed!</div>
@@ -174,13 +178,39 @@
           </div>
         </div>`;
       document.getElementById('overlay-container').appendChild(overlay);
+
+      // Avoid spawning the card directly under the cursor.
+      const card = overlay.querySelector('#gameover-card');
+      if (card) {
+        const pad = 12;
+        const offset = 28;
+        requestAnimationFrame(() => {
+          const cardW = card.offsetWidth;
+          const cardH = card.offsetHeight;
+          let left = mouseX + offset;
+          let top = mouseY + offset;
+
+          if (left + cardW > W - pad) left = mouseX - cardW - offset;
+          if (top + cardH > H - pad) top = mouseY - cardH - offset;
+
+          left = Math.max(pad, Math.min(left, W - cardW - pad));
+          top = Math.max(pad, Math.min(top, H - cardH - pad));
+
+          card.style.left = left + 'px';
+          card.style.top = top + 'px';
+          card.style.transform = 'none';
+        });
+      }
+
       overlay.querySelector('#gameover-playagain').addEventListener('click', () => {
         overlay.remove();
+        document.body.style.cursor = prevBodyCursor;
         gamePaused = false;
         startFreshGame();
       });
       overlay.querySelector('#gameover-skipad').addEventListener('click', () => {
         overlay.remove();
+        document.body.style.cursor = prevBodyCursor;
         gamePaused = false;
         adActive = false;
         adSuccess();
